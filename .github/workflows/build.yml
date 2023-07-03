@@ -1,96 +1,31 @@
-name: 'Test'
-
+name: Build and Push Docker Image
 on:
   push:
     branches:
-      - "*"
-    paths-ignore:
-      - '**.md'
-  pull_request:
-    branches:
       - main
-    paths-ignore:
-      - '**.md'
-
-env:
-  TEST_REPO_URL: https://github.com/jasonyang-ee/STM32-CMAKE-TEMPLATE.git
-  TEST_REPO: jasonyang-ee/STM32-CMAKE-TEMPLATE
 
 jobs:
-  Build_Test:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
-    - name: Checkout project
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Checkout example repo
-      uses: actions/checkout@v3
-      with:
-        repository: jasonyang-ee/STM32-CMAKE-TEMPLATE
-        path: project
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
 
-    - name: Build and Load for Ubuntu
-      id: output-ubuntu
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ${{ github.workspace }}/Dockerfile.ubuntu
-        push: false
-        load: true
-        tags: test
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Build and Load for Alpine
-      id: output-alpine
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ${{ github.workspace }}/Dockerfile.alpine
-        push: false
-        load: true
-        tags: test
-
-    - name: Build and Load for Arch
-      id: output-arch
-      uses: docker/build-push-action@v4
-      with:
-        context: .
-        file: ${{ github.workspace }}/Dockerfile.arch
-        push: false
-        load: true
-        tags: test
-
-    - name: Test Default
-      run: |
-        docker run ${{ steps.output-ubuntu.outputs.imageid }}
-        docker run ${{ steps.output-alpine.outputs.imageid }}
-        docker run ${{ steps.output-arch.outputs.imageid }}
-
-    - name: Test --help
-      run: |
-        docker run ${{ steps.output-ubuntu.outputs.imageid }} --help
-        docker run ${{ steps.output-alpine.outputs.imageid }} --help
-        docker run ${{ steps.output-arch.outputs.imageid }} --help
-
-    - name: Test URL
-      run: |
-        docker run ${{ steps.output-ubuntu.outputs.imageid }} ${{ env.TEST_REPO_URL }}
-        docker run ${{ steps.output-alpine.outputs.imageid }} ${{ env.TEST_REPO_URL }}
-        docker run ${{ steps.output-arch.outputs.imageid }} ${{ env.TEST_REPO_URL }}
-
-    - name: Test Volume
-      run: |
-        docker run -v "${{ github.workspace }}/project":"/proj" ${{ steps.output-ubuntu.outputs.imageid }} /proj
-        sudo rm -r ${{ github.workspace }}/project/build
-        docker run -v "${{ github.workspace }}/project":"/proj" ${{ steps.output-alpine.outputs.imageid }} /proj Debug
-        sudo rm -r ${{ github.workspace }}/project/build
-        docker run -v "${{ github.workspace }}/project":"/proj" ${{ steps.output-arch.outputs.imageid }} /proj Debug
-      
-    - name: Test Ubuntu Hybrid
-      run: |
-        docker run -v "${{ github.workspace }}/hybrid1":"/home" ${{ steps.output-ubuntu.outputs.imageid }} ${{ env.TEST_REPO_URL }}
-        docker run -v "${{ github.workspace }}/hybrid2":"/home" ${{ steps.output-alpine.outputs.imageid }} ${{ env.TEST_REPO_URL }} Debug
-        docker run -v "${{ github.workspace }}/hybrid3":"/home" ${{ steps.output-arch.outputs.imageid }} ${{ env.TEST_REPO_URL }} Debug
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: Dockerfile.alpine
+          push: true
+          tags: ghcr.io/${{ github.repository }}:latest
