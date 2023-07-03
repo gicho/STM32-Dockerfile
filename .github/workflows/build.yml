@@ -28,5 +28,4 @@ jobs:
           context: .
           file: Dockerfile.alpine
           push: true
-          tags: ghcr.io/${{ github.actor }}/${{ env.GITHUB_REPOSITORY#*/ }}:latest
-
+          tags: ghcr.io/${{ github.actor }}/stm32-dockerfile:latest
